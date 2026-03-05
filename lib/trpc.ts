@@ -19,9 +19,9 @@ const getBaseUrl = () => {
 
 export const trpcClient = trpc.createClient({
   links: [
-  httpLink({
-  url: `${getBaseUrl()}/trpc`, // הורדנו את ה- /api
-  transformer: superjson,
-}),
+    httpLink({
+      url: `${getBaseUrl()}/api/trpc`,
+      transformer: superjson,
+    }),
   ],
 });

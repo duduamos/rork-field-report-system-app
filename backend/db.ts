@@ -1,6 +1,6 @@
-// 1. אבטחה: שימוש במשתני סביבה במקום Hardcoded Token
-const TURSO_URL = process.env.TURSO_URL || "";
-const TURSO_AUTH_TOKEN = process.env.TURSO_AUTH_TOKEN || "";
+const TURSO_URL = "https://field-report-duduamos.aws-eu-west-1.turso.io";
+const TURSO_AUTH_TOKEN =
+  "eyJhbGciOiJFZERTQSIsInR5cCI6IkpXVCJ9.eyJhIjoicnciLCJpYXQiOjE3NzE5NTQ2NTksImlkIjoiMDE5YzkwYjktZGEwMS03MjUzLTlkMmYtOWRiMWY2YWZkZTZjIiwicmlkIjoiYjM0ZTk5NWMtYjVlOS00NmU5LTliZWQtY2Q0MmEyZmRlODA1In0.3b1iGx443-6YqP10kvK4iQmj6a9utOpUqBGbqsBfbGQpB8giiOr1QhwsyLRCO4R8FJh3l4N4i9ewmiAmIKQpCg";
 
 type TursoValue =
   | { type: "null" }
@@ -42,9 +42,8 @@ interface DbResult {
 
 function tursoValueToJs(val: TursoValue): unknown {
   if (val.type === "null") return null;
-  // 2. המרה נכונה: הפיכת הערך מ-String למספר אמיתי ב-JS
-  if (val.type === "integer") return Number(val.value); 
-  if (val.type === "real") return Number(val.value);
+  if (val.type === "integer") return val.value;
+  if (val.type === "real") return parseFloat(val.value);
   if (val.type === "text") return val.value;
   if (val.type === "blob") return val.base64;
   return null;
@@ -64,21 +63,11 @@ async function executeSql(
   sql: string,
   args?: SqlArg[]
 ): Promise<DbResult> {
-  if (!TURSO_URL || !TURSO_AUTH_TOKEN) {
-    throw new Error("Missing TURSO_URL or TURSO_AUTH_TOKEN environment variables.");
-  }
-
   const stmt: { sql: string; args?: TursoValue[] } = { sql };
-  
   if (args && args.length > 0) {
     stmt.args = args.map((arg): TursoValue => {
       if (arg === null) return { type: "null" };
-      if (typeof arg === "number") {
-        // 3. דיוק: הפרדה בין מספר שלם (Integer) למספר עשרוני (Real)
-        return Number.isInteger(arg) 
-          ? { type: "integer", value: String(arg) } 
-          : { type: "real", value: String(arg) };
-      }
+      if (typeof arg === "number") return { type: "integer", value: String(arg) };
       return { type: "text", value: String(arg) };
     });
   }
@@ -124,8 +113,6 @@ export const db = {
 
 export async function initDb(): Promise<void> {
   try {
-    // השארתי את זה כקריאות נפרדות כי זה קורה רק באתחול האפליקציה,
-    // אבל כעת זה בטוח ועובד חלק.
     await db.execute(`
       CREATE TABLE IF NOT EXISTS reports (
         id TEXT PRIMARY KEY,
